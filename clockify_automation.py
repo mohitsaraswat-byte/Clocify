@@ -5,17 +5,27 @@ import random
 import datetime
 
 # --- CONFIGURATION ---
-# We will securely store these in GitHub Secrets later!
+# These are securely pulled from your GitHub Secrets
 API_KEY = os.environ.get("CLOCKIFY_API_KEY")
 WORKSPACE_ID = os.environ.get("CLOCKIFY_WORKSPACE_ID")
 USER_ID = os.environ.get("CLOCKIFY_USER_ID")
-PROJECT_ID = "" # Optional: Add your project ID if you want to track to a specific project
 
 BASE_URL = "https://api.clockify.me/api/v1"
 HEADERS = {
     "X-Api-Key": API_KEY,
     "Content-Type": "application/json"
 }
+
+def get_projects():
+    """Fetches all active projects from your Clockify workspace."""
+    url = f"{BASE_URL}/workspaces/{WORKSPACE_ID}/projects"
+    response = requests.get(url, headers=HEADERS)
+    
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Error fetching projects: {response.text}")
+        return []
 
 def get_running_timer():
     """Fetches the currently running time entry from Clockify, if any."""
@@ -31,16 +41,34 @@ def get_running_timer():
     return None
 
 def start_timer():
-    """Starts a new time entry."""
+    """Starts a new time entry using a project name as the description."""
     url = f"{BASE_URL}/workspaces/{WORKSPACE_ID}/time-entries"
     now_utc = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-    payload = {"start": now_utc, "description": "Daily Automation"}
-    if PROJECT_ID:
-        payload["projectId"] = PROJECT_ID
+    
+    projects = get_projects()
+    
+    # Select a random active project from your account
+    if projects:
+        selected_project = random.choice(projects)
+        project_id = selected_project['id']
+        project_name = selected_project['name']
+    else:
+        # Fallback just in case no projects are found
+        project_id = None
+        project_name = "General Work" 
+
+    # Use the project name as the description
+    payload = {
+        "start": now_utc, 
+        "description": project_name
+    }
+    
+    if project_id:
+        payload["projectId"] = project_id
 
     response = requests.post(url, headers=HEADERS, json=payload)
     if response.status_code in [200, 201]:
-        print("Timer started successfully!")
+        print(f"Timer started successfully for project: '{project_name}'!")
     else:
         print(f"Error starting timer: {response.text}")
 
