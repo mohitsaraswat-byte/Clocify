@@ -1,30 +1,40 @@
-name: Clockify Daily Automation
+name: Clockify Auto Tracker
 
 on:
   schedule:
-    # Runs at 4:30 AM UTC (10:00 AM IST), Monday through Saturday
-    - cron: '30 4 * * 1-6' 
-  workflow_dispatch: # Allows you to trigger the script manually from the GitHub Actions tab
+    # --- START TIMER: 10:00 AM IST = 04:30 UTC (Mon–Fri) ---
+    - cron: '30 4 * * 1-5'
+
+    # --- STOP TIMER:  6:00 PM IST = 12:30 UTC (Mon–Fri) ---
+    - cron: '30 12 * * 1-5'
+
+  # Allows you to manually trigger either run from the GitHub Actions UI
+  workflow_dispatch:
 
 jobs:
-  run-script:
+  run-clockify-script:
+    name: Run Clockify Automation
     runs-on: ubuntu-latest
+
+    # Max 25 min — covers the 15-min random sleep + API call time
+    timeout-minutes: 25
+
+    env:
+      CLOCKIFY_API_KEY:      ${{ secrets.CLOCKIFY_API_KEY }}
+      CLOCKIFY_WORKSPACE_ID: ${{ secrets.CLOCKIFY_WORKSPACE_ID }}
+      CLOCKIFY_USER_ID:      ${{ secrets.CLOCKIFY_USER_ID }}
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: pip install requests
 
-      - name: Run Clockify Script
-        env:
-          # Ensure these match the exact names of your GitHub Secrets
-          CLOCKIFY_API_KEY: ${{ secrets.CLOCKIFY_API_KEY }}
-          CLOCKIFY_WORKSPACE_ID: ${{ secrets.CLOCKIFY_WORKSPACE_ID }}
-          CLOCKIFY_USER_ID: ${{ secrets.CLOCKIFY_USER_ID }}
-        run: python main.py
+      - name: Run Clockify automation script
+        run: python clockify_automation.py
